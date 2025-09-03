@@ -1,0 +1,172 @@
+# ACME (Let's Encrypt) Configuration Example
+# This configuration demonstrates how to enable automatic SSL/TLS certificate management
+
+# Server configuration with ACME enabled
+server:
+  # HTTP server address
+  address: ":8080"
+  # HTTPS server address (required for ACME)
+  https_address: ":8443"
+  # TLS configuration with ACME
+  tls:
+    enabled: true
+    # Static certificate files (not used when ACME is enabled)
+    cert_file: ""
+    key_file: ""
+    # ACME (Let's Encrypt) configuration
+    acme:
+      enabled: true
+      # Domains for which to obtain certificates
+      domains:
+        - "example.com"
+        - "www.example.com"
+        - "api.example.com"
+      # Email address for Let's Encrypt account (required)
+      email: "admin@example.com"
+      # Directory to cache certificates (will be created if not exists)
+      cache_dir: "/var/lib/stargate/acme-cache"
+      # ACME directory URL (leave empty for production Let's Encrypt)
+      # Use staging for testing: "https://acme-staging-v02.api.letsencrypt.org/directory"
+      directory_url: ""
+      # Accept Let's Encrypt Terms of Service (required)
+      accept_tos: true
+  # Request timeout
+  timeout: 30s
+  # Read timeout
+  read_timeout: 10s
+  # Write timeout
+  write_timeout: 10s
+  # Idle timeout
+  idle_timeout: 60s
+  # Max header bytes
+  max_header_bytes: 1048576
+
+# Controller configuration with ACME enabled
+controller:
+  # Admin API server address
+  address: ":9090"
+  # HTTPS server address (required for ACME)
+  https_address: ":9443"
+  # TLS configuration with ACME
+  tls:
+    enabled: true
+    # Static certificate files (not used when ACME is enabled)
+    cert_file: ""
+    key_file: ""
+    # ACME (Let's Encrypt) configuration
+    acme:
+      enabled: true
+      # Domains for which to obtain certificates
+      domains:
+        - "admin.example.com"
+        - "control.example.com"
+      # Email address for Let's Encrypt account (required)
+      email: "admin@example.com"
+      # Directory to cache certificates (will be created if not exists)
+      cache_dir: "/var/lib/stargate/acme-cache-controller"
+      # ACME directory URL (leave empty for production Let's Encrypt)
+      directory_url: ""
+      # Accept Let's Encrypt Terms of Service (required)
+      accept_tos: true
+  # Request timeout
+  timeout: 30s
+  # Read timeout
+  read_timeout: 10s
+  # Write timeout
+  write_timeout: 10s
+
+# Admin API configuration
+admin_api:
+  # Enable REST API
+  rest:
+    enabled: true
+    prefix: "/api/v1"
+  # Enable gRPC API
+  grpc:
+    enabled: true
+    port: 9091
+  # Authentication
+  auth:
+    enabled: false
+
+# Logging configuration
+logging:
+  level: "info"
+  format: "json"
+  output: "stdout"
+
+# Configuration store
+store:
+  # Store type: etcd, consul, file
+  type: "etcd"
+  # Etcd configuration
+  etcd:
+    endpoints:
+      - "localhost:2379"
+    timeout: 5s
+    # TLS configuration for etcd (separate from server TLS)
+    tls:
+      enabled: false
+      cert_file: ""
+      key_file: ""
+      ca_file: ""
+    # Authentication
+    username: ""
+    password: ""
+  # Configuration key prefix
+  key_prefix: "/stargate/config"
+  # Watch for configuration changes
+  watch: true
+
+# Route management
+routes:
+  # Default route configuration
+  defaults:
+    timeout: 30s
+    retries: 3
+    retry_timeout: 5s
+
+# Upstream management
+upstreams:
+  # Default upstream configuration
+  defaults:
+    algorithm: "round_robin"
+    health_check:
+      enabled: true
+      interval: 30s
+      timeout: 5s
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+      path: "/health"
+
+# ACME Configuration Notes:
+#
+# 1. Prerequisites:
+#    - Your domain must point to the server running Stargate
+#    - Port 80 must be accessible for HTTP-01 challenge validation
+#    - Port 443 must be accessible for HTTPS traffic
+#
+# 2. First-time setup:
+#    - Set accept_tos: true to accept Let's Encrypt Terms of Service
+#    - Provide a valid email address for account registration
+#    - Ensure domains are properly configured in DNS
+#
+# 3. Testing:
+#    - Use staging directory URL for testing to avoid rate limits
+#    - Staging URL: "https://acme-staging-v02.api.letsencrypt.org/directory"
+#    - Staging certificates are not trusted by browsers
+#
+# 4. Production:
+#    - Leave directory_url empty for production Let's Encrypt
+#    - Monitor certificate expiration and renewal logs
+#    - Ensure cache_dir is persistent and writable
+#
+# 5. Security:
+#    - Protect the cache directory (contains private keys)
+#    - Use appropriate file permissions (0700)
+#    - Consider backup strategies for certificates
+#
+# 6. Monitoring:
+#    - Check /health endpoint for certificate status
+#    - Monitor logs for renewal activities
+#    - Set up alerts for certificate expiration

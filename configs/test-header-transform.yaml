@@ -1,0 +1,99 @@
+# 测试头转换中间件配置文件
+# 用于验证请求/响应头转换功能
+
+server:
+  address: ":8080"
+  timeout: 30s
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 60s
+
+# 启用头转换中间件
+header_transform:
+  enabled: true
+  # 请求头转换规则
+  request_headers:
+    add:
+      X-Request-Id: "${request_id}"
+      X-Gateway: "stargate"
+      X-Timestamp: "${timestamp}"
+      X-Method: "${method}"
+      X-Path: "${path}"
+    remove:
+      - "X-Internal-Token"
+      - "X-Debug-Info"
+    rename:
+      User-Agent: "X-Original-User-Agent"
+    replace:
+      Accept: "application/json"
+  # 响应头转换规则
+  response_headers:
+    add:
+      X-Response-Time: "${timestamp}"
+      X-Processed-By: "stargate-gateway"
+      X-Version: "1.0.0"
+    remove:
+      - "Server"
+      - "X-Powered-By"
+    rename:
+      Content-Length: "X-Content-Size"
+    replace:
+      Cache-Control: "no-cache, no-store, must-revalidate"
+  # 按路由配置
+  per_route:
+    api-route:
+      enabled: true
+      request_headers:
+        add:
+          X-API-Route: "true"
+          X-API-Version: "v1"
+        remove:
+          - "X-Legacy-Header"
+      response_headers:
+        add:
+          X-API-Response: "processed"
+
+# 日志配置
+logging:
+  level: "debug"
+  format: "json"
+  output: "stdout"
+
+# 路由配置
+routes:
+  defaults:
+    timeout: 30s
+    retries: 3
+    retry_timeout: 5s
+
+# 上游配置
+upstreams:
+  defaults:
+    algorithm: "round_robin"
+    health_check:
+      enabled: true
+      interval: 30s
+      timeout: 5s
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+      path: "/health"
+
+# 禁用其他中间件以专注测试头转换
+cors:
+  enabled: false
+
+ip_acl:
+  enabled: false
+
+rate_limit:
+  enabled: false
+
+circuit_breaker:
+  enabled: false
+
+auth:
+  enabled: false
+
+metrics:
+  enabled: true
+  path: "/metrics"

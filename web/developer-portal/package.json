@@ -1,0 +1,63 @@
+{
+  "name": "stargate-developer-portal",
+  "version": "1.0.0",
+  "description": "Stargate Developer Portal - Interactive API Documentation",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint . --ext ts,tsx --fix",
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^5.2.0",
+    "@types/recharts": "^2.0.1",
+    "antd": "^5.12.0",
+    "axios": "^1.6.0",
+    "classnames": "^2.3.0",
+    "dayjs": "^1.11.0",
+    "lodash-es": "^4.17.0",
+    "prismjs": "^1.29.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-helmet-async": "^2.0.0",
+    "react-query": "^3.39.0",
+    "react-router-dom": "^6.8.0",
+    "react-syntax-highlighter": "^15.5.0",
+    "recharts": "^3.1.2",
+    "socket.io-client": "^4.7.0",
+    "swagger-ui-react": "^5.10.0",
+    "zustand": "^4.4.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.0.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^14.4.0",
+    "@types/lodash-es": "^4.17.0",
+    "@types/prismjs": "^1.26.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/react-syntax-highlighter": "^15.5.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "@vitest/ui": "^0.34.0",
+    "eslint": "^8.45.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.0",
+    "jsdom": "^22.0.0",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.0",
+    "vitest": "^0.34.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}

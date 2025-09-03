@@ -1,0 +1,153 @@
+# Stargate API Aggregator Configuration Example
+# This example shows how to configure API request aggregation
+
+server:
+  address: ":8080"
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 60s
+
+# API Aggregator Configuration
+aggregator:
+  enabled: true
+  default_timeout: 10s
+  max_concurrency: 100
+  routes:
+    # Example 1: User Profile Aggregation
+    - id: "user-profile-aggregate"
+      path: "/aggregated/profile"
+      method: "GET"
+      timeout: 15s
+      upstream_requests:
+        - name: "user"
+          url: "http://user-service:8080/users/1"
+          method: "GET"
+          headers:
+            Content-Type: "application/json"
+            Authorization: "Bearer ${request.headers.authorization}"
+          timeout: 5s
+          required: true
+        - name: "orders"
+          url: "http://order-service:8080/orders/for/1"
+          method: "GET"
+          headers:
+            Content-Type: "application/json"
+            Authorization: "Bearer ${request.headers.authorization}"
+          timeout: 5s
+          required: false
+        - name: "preferences"
+          url: "http://preference-service:8080/preferences/1"
+          method: "GET"
+          headers:
+            Content-Type: "application/json"
+          timeout: 3s
+          required: false
+      response_template: |
+        {
+          "user_id": "{{ .user.id }}",
+          "profile": {
+            "name": "{{ .user.name }}",
+            "email": "{{ .user.email }}",
+            "orders": "{{ .orders }}",
+            "preferences": "{{ .preferences }}"
+          },
+          "aggregated_at": "{{ now }}"
+        }
+
+    # Example 2: Dashboard Data Aggregation
+    - id: "dashboard-aggregate"
+      path: "/aggregated/dashboard"
+      method: "GET"
+      timeout: 20s
+      upstream_requests:
+        - name: "stats"
+          url: "http://analytics-service:8080/stats"
+          method: "GET"
+          headers:
+            Content-Type: "application/json"
+          timeout: 8s
+          required: true
+        - name: "notifications"
+          url: "http://notification-service:8080/notifications/recent"
+          method: "GET"
+          headers:
+            Content-Type: "application/json"
+          timeout: 5s
+          required: false
+        - name: "alerts"
+          url: "http://monitoring-service:8080/alerts/active"
+          method: "GET"
+          headers:
+            Content-Type: "application/json"
+          timeout: 3s
+          required: false
+
+    # Example 3: Product Details with Reviews and Inventory
+    - id: "product-details-aggregate"
+      path: "/aggregated/product/{id}"
+      method: "GET"
+      timeout: 12s
+      upstream_requests:
+        - name: "product"
+          url: "http://catalog-service:8080/products/${path.id}"
+          method: "GET"
+          headers:
+            Content-Type: "application/json"
+          timeout: 4s
+          required: true
+        - name: "reviews"
+          url: "http://review-service:8080/reviews/product/${path.id}"
+          method: "GET"
+          headers:
+            Content-Type: "application/json"
+          timeout: 6s
+          required: false
+        - name: "inventory"
+          url: "http://inventory-service:8080/inventory/${path.id}"
+          method: "GET"
+          headers:
+            Content-Type: "application/json"
+          timeout: 3s
+          required: false
+
+# Other middleware configurations
+auth:
+  enabled: true
+  jwt:
+    enabled: true
+    secret: "your-jwt-secret"
+
+cors:
+  enabled: true
+  allowed_origins: ["*"]
+  allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+  allowed_headers: ["Content-Type", "Authorization"]
+
+rate_limit:
+  enabled: true
+  default_rate: 100
+  burst: 200
+
+circuit_breaker:
+  enabled: true
+  failure_threshold: 5
+  recovery_timeout: 30s
+
+logging:
+  access_log:
+    enabled: true
+    format: "json"
+    output: "stdout"
+
+metrics:
+  enabled: true
+  prometheus:
+    enabled: true
+    path: "/metrics"
+
+tracing:
+  enabled: true
+  jaeger:
+    endpoint: "http://jaeger:14268/api/traces"
+    service_name: "stargate-aggregator"
+    sample_rate: 0.1

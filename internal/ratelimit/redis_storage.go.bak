@@ -1,0 +1,269 @@
+package ratelimit
+
+import (
+	"context"
+	"fmt"
+	"strconv"
+	"time"
+
+	"github.com/redis/go-redis/v9"
+)
+
+// RedisStorage implements Storage interface using Redis
+type RedisStorage struct {
+	client *redis.Client
+	config *RedisConfig
+	prefix string
+}
+
+// NewRedisStorage creates a new Redis storage backend
+func NewRedisStorage(cfg *RedisConfig) (*RedisStorage, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("redis config is required")
+	}
+
+	// Create Redis client
+	client := redis.NewClient(&redis.Options{
+		Addr:     cfg.Address,
+		Password: cfg.Password,
+		DB:       cfg.DB,
+	})
+
+	// Test connection
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := client.Ping(ctx).Err(); err != nil {
+		client.Close()
+		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
+	}
+
+	return &RedisStorage{
+		client: client,
+		config: cfg,
+		prefix: "ratelimit:",
+	}, nil
+}
+
+// getKey returns the full key with prefix
+func (rs *RedisStorage) getKey(key string) string {
+	return rs.prefix + key
+}
+
+// Increment increments the counter for the given key
+func (rs *RedisStorage) Increment(ctx context.Context, key string) (int64, error) {
+	fullKey := rs.getKey(key)
+	
+	result, err := rs.client.Incr(ctx, fullKey).Result()
+	if err != nil {
+		return 0, fmt.Errorf("failed to increment key %s: %w", key, err)
+	}
+	
+	return result, nil
+}
+
+// IncrementWithExpiry increments the counter and sets expiry if it's a new key
+func (rs *RedisStorage) IncrementWithExpiry(ctx context.Context, key string, expiry time.Duration) (int64, bool, error) {
+	fullKey := rs.getKey(key)
+	
+	// Use a Lua script to atomically increment and set expiry only if it's a new key
+	luaScript := `
+		local key = KEYS[1]
+		local expiry = ARGV[1]
+		
+		local current = redis.call('GET', key)
+		if current == false then
+			-- Key doesn't exist, set to 1 and set expiry
+			redis.call('SET', key, 1, 'EX', expiry)
+			return {1, 1}  -- value, is_new
+		else
+			-- Key exists, just increment
+			local new_val = redis.call('INCR', key)
+			return {new_val, 0}  -- value, is_new
+		end
+	`
+	
+	result, err := rs.client.Eval(ctx, luaScript, []string{fullKey}, int(expiry.Seconds())).Result()
+	if err != nil {
+		return 0, false, fmt.Errorf("failed to increment with expiry for key %s: %w", key, err)
+	}
+	
+	// Parse result
+	resultSlice, ok := result.([]interface{})
+	if !ok || len(resultSlice) != 2 {
+		return 0, false, fmt.Errorf("unexpected result format from Redis script")
+	}
+	
+	value, ok := resultSlice[0].(int64)
+	if !ok {
+		return 0, false, fmt.Errorf("unexpected value type from Redis script")
+	}
+	
+	isNew, ok := resultSlice[1].(int64)
+	if !ok {
+		return 0, false, fmt.Errorf("unexpected is_new type from Redis script")
+	}
+	
+	return value, isNew == 1, nil
+}
+
+// Get retrieves the current value for the given key
+func (rs *RedisStorage) Get(ctx context.Context, key string) (int64, error) {
+	fullKey := rs.getKey(key)
+	
+	result, err := rs.client.Get(ctx, fullKey).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return 0, nil // Key doesn't exist
+		}
+		return 0, fmt.Errorf("failed to get key %s: %w", key, err)
+	}
+	
+	value, err := strconv.ParseInt(result, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse value for key %s: %w", key, err)
+	}
+	
+	return value, nil
+}
+
+// Set sets the value for the given key with optional expiry
+func (rs *RedisStorage) Set(ctx context.Context, key string, value int64, expiry time.Duration) error {
+	fullKey := rs.getKey(key)
+	
+	var err error
+	if expiry > 0 {
+		err = rs.client.Set(ctx, fullKey, value, expiry).Err()
+	} else {
+		err = rs.client.Set(ctx, fullKey, value, 0).Err()
+	}
+	
+	if err != nil {
+		return fmt.Errorf("failed to set key %s: %w", key, err)
+	}
+	
+	return nil
+}
+
+// Delete removes the key from storage
+func (rs *RedisStorage) Delete(ctx context.Context, key string) error {
+	fullKey := rs.getKey(key)
+	
+	err := rs.client.Del(ctx, fullKey).Err()
+	if err != nil {
+		return fmt.Errorf("failed to delete key %s: %w", key, err)
+	}
+	
+	return nil
+}
+
+// Exists checks if a key exists in storage
+func (rs *RedisStorage) Exists(ctx context.Context, key string) (bool, error) {
+	fullKey := rs.getKey(key)
+	
+	result, err := rs.client.Exists(ctx, fullKey).Result()
+	if err != nil {
+		return false, fmt.Errorf("failed to check existence of key %s: %w", key, err)
+	}
+	
+	return result > 0, nil
+}
+
+// GetWithTTL retrieves the value and remaining TTL for a key
+func (rs *RedisStorage) GetWithTTL(ctx context.Context, key string) (int64, time.Duration, error) {
+	fullKey := rs.getKey(key)
+	
+	// Use pipeline to get both value and TTL atomically
+	pipe := rs.client.Pipeline()
+	getCmd := pipe.Get(ctx, fullKey)
+	ttlCmd := pipe.TTL(ctx, fullKey)
+	
+	_, err := pipe.Exec(ctx)
+	if err != nil && err != redis.Nil {
+		return 0, 0, fmt.Errorf("failed to get value and TTL for key %s: %w", key, err)
+	}
+	
+	// Handle value
+	var value int64
+	if getCmd.Err() == nil {
+		valueStr, err := getCmd.Result()
+		if err != nil {
+			return 0, 0, fmt.Errorf("failed to get value for key %s: %w", key, err)
+		}
+		
+		value, err = strconv.ParseInt(valueStr, 10, 64)
+		if err != nil {
+			return 0, 0, fmt.Errorf("failed to parse value for key %s: %w", key, err)
+		}
+	} else if getCmd.Err() != redis.Nil {
+		return 0, 0, fmt.Errorf("failed to get value for key %s: %w", key, getCmd.Err())
+	}
+	
+	// Handle TTL
+	var ttl time.Duration
+	if ttlCmd.Err() == nil {
+		ttl, err = ttlCmd.Result()
+		if err != nil {
+			return 0, 0, fmt.Errorf("failed to get TTL for key %s: %w", key, err)
+		}
+		
+		// Redis returns -1 for keys without expiry, -2 for non-existent keys
+		if ttl == -1*time.Second {
+			ttl = 0 // No expiry
+		} else if ttl == -2*time.Second {
+			ttl = 0 // Key doesn't exist
+		}
+	}
+	
+	return value, ttl, nil
+}
+
+// SetExpiry sets or updates the expiry time for an existing key
+func (rs *RedisStorage) SetExpiry(ctx context.Context, key string, expiry time.Duration) error {
+	fullKey := rs.getKey(key)
+	
+	var err error
+	if expiry > 0 {
+		err = rs.client.Expire(ctx, fullKey, expiry).Err()
+	} else {
+		err = rs.client.Persist(ctx, fullKey).Err()
+	}
+	
+	if err != nil {
+		return fmt.Errorf("failed to set expiry for key %s: %w", key, err)
+	}
+	
+	return nil
+}
+
+// Close closes the Redis connection
+func (rs *RedisStorage) Close() error {
+	return rs.client.Close()
+}
+
+// Health returns the health status of the Redis storage
+func (rs *RedisStorage) Health() map[string]interface{} {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	
+	health := map[string]interface{}{
+		"type":    "redis",
+		"address": rs.config.Address,
+		"db":      rs.config.DB,
+	}
+	
+	// Test connection
+	if err := rs.client.Ping(ctx).Err(); err != nil {
+		health["status"] = "unhealthy"
+		health["error"] = err.Error()
+	} else {
+		health["status"] = "healthy"
+		
+		// Get additional info
+		if info, err := rs.client.Info(ctx, "server").Result(); err == nil {
+			health["server_info"] = info
+		}
+	}
+	
+	return health
+}

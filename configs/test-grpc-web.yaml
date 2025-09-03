@@ -1,0 +1,130 @@
+# 测试gRPC-Web代理中间件配置文件
+# 用于验证gRPC-Web协议转换功能
+
+server:
+  address: ":8080"
+  timeout: 30s
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 60s
+
+# 启用gRPC-Web代理中间件
+grpc_web:
+  enabled: true
+  allowed_origins:
+    - "https://localhost:3000"
+    - "https://example.com"
+    - "http://localhost:8080"
+  default_timeout: 30s
+  
+  # gRPC服务配置
+  services:
+    # 用户服务
+    user.UserService:
+      enabled: true
+      backend: "localhost:9090"
+      timeout: 10s
+      metadata:
+        service-name: "user-service"
+        version: "v1.0"
+      tls:
+        enabled: false
+        insecure_skip_verify: true
+    
+    # 产品服务
+    product.ProductService:
+      enabled: true
+      backend: "localhost:9091"
+      timeout: 15s
+      metadata:
+        service-name: "product-service"
+        version: "v1.0"
+      tls:
+        enabled: false
+        insecure_skip_verify: true
+    
+    # 订单服务
+    order.OrderService:
+      enabled: true
+      backend: "localhost:9092"
+      timeout: 20s
+      metadata:
+        service-name: "order-service"
+        version: "v1.0"
+      tls:
+        enabled: false
+        insecure_skip_verify: true
+
+  # CORS配置
+  cors:
+    enabled: true
+    allowed_origins:
+      - "https://localhost:3000"
+      - "https://example.com"
+      - "http://localhost:8080"
+    allowed_methods:
+      - "POST"
+      - "OPTIONS"
+    allowed_headers:
+      - "Content-Type"
+      - "X-Grpc-Web"
+      - "X-User-Agent"
+      - "Authorization"
+      - "X-Requested-With"
+    exposed_headers:
+      - "Grpc-Status"
+      - "Grpc-Message"
+      - "Grpc-Status-Details-Bin"
+    allow_credentials: true
+    max_age: 86400
+
+# 日志配置
+logging:
+  level: "debug"
+  format: "json"
+  output: "stdout"
+
+# 路由配置
+routes:
+  defaults:
+    timeout: 30s
+    retries: 3
+    retry_timeout: 5s
+
+# 上游配置
+upstreams:
+  defaults:
+    algorithm: "round_robin"
+    health_check:
+      enabled: true
+      interval: 30s
+      timeout: 5s
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+      path: "/health"
+
+# 禁用其他中间件以专注测试gRPC-Web
+cors:
+  enabled: false
+
+header_transform:
+  enabled: false
+
+mock_response:
+  enabled: false
+
+ip_acl:
+  enabled: false
+
+rate_limit:
+  enabled: false
+
+circuit_breaker:
+  enabled: false
+
+auth:
+  enabled: false
+
+metrics:
+  enabled: true
+  path: "/metrics"

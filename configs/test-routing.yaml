@@ -1,0 +1,150 @@
+# 测试路由配置文件
+# 用于验证路由规则配置模型定义与加载功能
+
+routes:
+  # API路由 - 前缀匹配
+  - id: "api-route"
+    name: "API Route"
+    rules:
+      hosts: ["api.example.com", "*.api.example.com"]
+      paths:
+        - type: "prefix"
+          value: "/api"
+      methods: ["GET", "POST", "PUT", "DELETE"]
+      headers:
+        - name: "X-API-Version"
+          value: "v1"
+      query_params:
+        format: "json"
+    upstream_id: "api-upstream"
+    priority: 100
+    metadata:
+      description: "Main API endpoint"
+      team: "backend"
+
+  # 用户服务路由 - 精确匹配
+  - id: "user-route"
+    name: "User Service Route"
+    rules:
+      hosts: ["app.example.com"]
+      paths:
+        - type: "exact"
+          value: "/users"
+        - type: "prefix"
+          value: "/users/"
+      methods: ["GET", "POST"]
+    upstream_id: "user-upstream"
+    priority: 200
+    metadata:
+      description: "User management service"
+      team: "user-team"
+
+  # 健康检查路由 - 正则匹配
+  - id: "health-route"
+    name: "Health Check Route"
+    rules:
+      paths:
+        - type: "regex"
+          value: "^/health(/.*)?$"
+      methods: ["GET"]
+    upstream_id: "health-upstream"
+    priority: 300
+    metadata:
+      description: "Health check endpoint"
+      public: "true"
+
+  # 静态文件路由
+  - id: "static-route"
+    name: "Static Files Route"
+    rules:
+      hosts: ["cdn.example.com"]
+      paths:
+        - type: "prefix"
+          value: "/static"
+      methods: ["GET", "HEAD"]
+    upstream_id: "static-upstream"
+    priority: 50
+    metadata:
+      description: "Static file serving"
+      cache: "enabled"
+
+upstreams:
+  # API上游服务 - 轮询负载均衡
+  - id: "api-upstream"
+    name: "API Backend"
+    targets:
+      - url: "http://api-server-1.internal:8080"
+        weight: 100
+      - url: "http://api-server-2.internal:8080"
+        weight: 100
+      - url: "http://api-server-3.internal:8080"
+        weight: 50
+    algorithm: "round_robin"
+    health_check:
+      enabled: true
+      interval: 30s
+      timeout: 5s
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+      path: "/health"
+    metadata:
+      environment: "production"
+      region: "us-west-2"
+
+  # 用户服务上游 - 加权轮询
+  - id: "user-upstream"
+    name: "User Service Backend"
+    targets:
+      - url: "https://user-service-1.internal:8443"
+        weight: 200
+      - url: "https://user-service-2.internal:8443"
+        weight: 100
+    algorithm: "weighted"
+    health_check:
+      enabled: true
+      interval: 15s
+      timeout: 3s
+      healthy_threshold: 1
+      unhealthy_threshold: 2
+      path: "/api/health"
+    metadata:
+      environment: "production"
+      database: "users-db"
+
+  # 健康检查上游 - IP哈希
+  - id: "health-upstream"
+    name: "Health Check Service"
+    targets:
+      - url: "http://health-service.internal:8080"
+        weight: 100
+    algorithm: "ip_hash"
+    health_check:
+      enabled: true
+      interval: 10s
+      timeout: 2s
+      healthy_threshold: 1
+      unhealthy_threshold: 1
+      path: "/ping"
+    metadata:
+      environment: "production"
+      monitoring: "enabled"
+
+  # 静态文件上游
+  - id: "static-upstream"
+    name: "Static File Server"
+    targets:
+      - url: "http://static-1.internal:80"
+        weight: 100
+      - url: "http://static-2.internal:80"
+        weight: 100
+    algorithm: "round_robin"
+    health_check:
+      enabled: true
+      interval: 60s
+      timeout: 10s
+      healthy_threshold: 1
+      unhealthy_threshold: 2
+      path: "/health"
+    metadata:
+      environment: "production"
+      storage: "s3"

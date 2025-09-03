@@ -1,0 +1,117 @@
+# 无效的路由配置文件
+# 用于测试错误处理和验证功能
+
+routes:
+  # 缺少必需字段的路由
+  - id: ""  # 空ID - 应该报错
+    name: "Invalid Route 1"
+    rules:
+      hosts: ["example.com"]
+    upstream_id: "test-upstream"
+
+  # 无效的路径规则
+  - id: "invalid-path-route"
+    name: "Invalid Path Route"
+    rules:
+      paths:
+        - type: "invalid_type"  # 无效的匹配类型
+          value: "api"  # 不以/开头
+    upstream_id: "test-upstream"
+
+  # 引用不存在的上游服务
+  - id: "orphan-route"
+    name: "Orphan Route"
+    rules:
+      hosts: ["orphan.example.com"]
+    upstream_id: "non-existent-upstream"  # 不存在的上游服务
+
+  # 重复的路由ID
+  - id: "duplicate-id"
+    name: "Route 1"
+    rules:
+      hosts: ["example1.com"]
+    upstream_id: "test-upstream"
+
+  - id: "duplicate-id"  # 重复ID - 应该报错
+    name: "Route 2"
+    rules:
+      hosts: ["example2.com"]
+    upstream_id: "test-upstream"
+
+  # 空的匹配规则
+  - id: "empty-rules-route"
+    name: "Empty Rules Route"
+    rules: {}  # 空规则 - 应该报错
+    upstream_id: "test-upstream"
+
+  # 无效的HTTP方法
+  - id: "invalid-method-route"
+    name: "Invalid Method Route"
+    rules:
+      hosts: ["method.example.com"]
+      methods: ["INVALID_METHOD"]  # 无效的HTTP方法
+    upstream_id: "test-upstream"
+
+  # 无效的正则表达式
+  - id: "invalid-regex-route"
+    name: "Invalid Regex Route"
+    rules:
+      paths:
+        - type: "regex"
+          value: "[invalid regex"  # 无效的正则表达式
+    upstream_id: "test-upstream"
+
+upstreams:
+  # 正常的上游服务
+  - id: "test-upstream"
+    name: "Test Upstream"
+    targets:
+      - url: "http://backend.example.com"
+        weight: 100
+
+  # 缺少必需字段的上游服务
+  - id: ""  # 空ID - 应该报错
+    name: "Invalid Upstream 1"
+    targets:
+      - url: "http://backend.example.com"
+
+  # 没有目标的上游服务
+  - id: "no-targets-upstream"
+    name: "No Targets Upstream"
+    targets: []  # 空目标列表 - 应该报错
+
+  # 无效的目标URL
+  - id: "invalid-url-upstream"
+    name: "Invalid URL Upstream"
+    targets:
+      - url: ""  # 空URL - 应该报错
+        weight: 100
+      - url: "invalid-url"  # 无效URL格式
+        weight: 100
+      - url: "ftp://invalid-scheme.com"  # 不支持的协议
+        weight: 100
+
+  # 负权重
+  - id: "negative-weight-upstream"
+    name: "Negative Weight Upstream"
+    targets:
+      - url: "http://backend.example.com"
+        weight: -1  # 负权重 - 应该报错
+
+  # 重复的上游服务ID
+  - id: "duplicate-upstream-id"
+    name: "Upstream 1"
+    targets:
+      - url: "http://backend1.example.com"
+
+  - id: "duplicate-upstream-id"  # 重复ID - 应该报错
+    name: "Upstream 2"
+    targets:
+      - url: "http://backend2.example.com"
+
+  # 无效的负载均衡算法
+  - id: "invalid-algorithm-upstream"
+    name: "Invalid Algorithm Upstream"
+    targets:
+      - url: "http://backend.example.com"
+    algorithm: "invalid_algorithm"  # 无效算法 - 应该报错

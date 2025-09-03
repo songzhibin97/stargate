@@ -1,0 +1,1015 @@
+openapi: 3.0.0
+info:
+  title: Stargate API
+  description: |
+    Stargate is a high-performance API gateway that provides comprehensive route management, 
+    load balancing, plugin system, and developer portal functionality.
+    
+    ## Authentication
+    
+    Stargate supports multiple authentication methods:
+    - **API Key**: Use `X-Admin-Key` header for admin operations
+    - **JWT Bearer**: Use `Authorization: Bearer <token>` for user operations
+    
+    ## Rate Limiting
+    
+    API requests are subject to rate limiting:
+    - Admin API: 1000 requests/hour per API key
+    - Portal API: 100 requests/minute per user
+    
+    ## Error Handling
+    
+    All endpoints return consistent error responses with HTTP status codes and JSON error objects.
+  version: 1.0.0
+  contact:
+    name: Stargate Team
+    url: https://github.com/stargate/stargate
+    email: support@stargate.io
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:9090
+    description: Development server (Admin API)
+  - url: http://localhost:8080
+    description: Development server (Portal API)
+  - url: https://api.stargate.io
+    description: Production server
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns the health status of the API server
+      operationId: getHealth
+      security: []
+      parameters:
+        - name: detailed
+          in: query
+          description: Include detailed component health information
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                basic:
+                  summary: Basic health check
+                  value:
+                    status: healthy
+                    timestamp: 1640995200
+                detailed:
+                  summary: Detailed health check
+                  value:
+                    status: healthy
+                    timestamp: 1640995200
+                    components:
+                      api:
+                        status: healthy
+                      storage:
+                        status: healthy
+                        latency: 2ms
+                      upstreams:
+                        upstream-001:
+                          status: healthy
+                          active_targets: 2
+
+  /metrics:
+    get:
+      summary: Get Prometheus metrics
+      description: Returns Prometheus-formatted metrics for monitoring
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Metrics data
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  # HELP stargate_requests_total Total number of requests
+                  # TYPE stargate_requests_total counter
+                  stargate_requests_total{method="GET",status="200"} 1234
+
+  /auth/login:
+    post:
+      summary: Authenticate user
+      description: Authenticate user credentials and return JWT token
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              admin:
+                summary: Admin login
+                value:
+                  username: admin
+                  password: password
+              developer:
+                summary: Developer login
+                value:
+                  username: developer
+                  password: dev_password
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/api-keys:
+    post:
+      summary: Generate API key
+      description: Generate a new API key for authentication
+      operationId: generateApiKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiKeyRequest'
+      responses:
+        '200':
+          description: API key generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/routes:
+    get:
+      summary: List routes
+      description: Get a paginated list of all routes
+      operationId: listRoutes
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of routes to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          description: Number of routes to skip
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: search
+          in: query
+          description: Search routes by name or host
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of routes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteListResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Create route
+      description: Create a new route configuration
+      operationId: createRoute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouteRequest'
+            examples:
+              basic:
+                summary: Basic route
+                value:
+                  name: API Route
+                  rules:
+                    hosts:
+                      - api.example.com
+                    paths:
+                      - type: prefix
+                        value: /api
+                    methods:
+                      - GET
+                      - POST
+                  upstream_id: upstream-001
+              advanced:
+                summary: Advanced route with regex
+                value:
+                  name: User API Route
+                  rules:
+                    hosts:
+                      - api.example.com
+                    paths:
+                      - type: regex
+                        value: ^/api/v1/users/[0-9]+$
+                    methods:
+                      - GET
+                      - PUT
+                      - DELETE
+                  upstream_id: upstream-001
+                  priority: 100
+                  metadata:
+                    team: backend
+                    environment: production
+      responses:
+        '201':
+          description: Route created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteResponse'
+        '400':
+          description: Bad request - validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict - route already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/routes/{routeId}:
+    parameters:
+      - name: routeId
+        in: path
+        required: true
+        description: Unique identifier of the route
+        schema:
+          type: string
+          example: route-001
+
+    get:
+      summary: Get route
+      description: Get a specific route by ID
+      operationId: getRoute
+      responses:
+        '200':
+          description: Route details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Route'
+        '404':
+          description: Route not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update route
+      description: Update an existing route
+      operationId: updateRoute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouteRequest'
+      responses:
+        '200':
+          description: Route updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteResponse'
+        '400':
+          description: Bad request - validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Route not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete route
+      description: Delete a route by ID
+      operationId: deleteRoute
+      responses:
+        '200':
+          description: Route deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Route not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/upstreams:
+    get:
+      summary: List upstreams
+      description: Get a paginated list of all upstreams
+      operationId: listUpstreams
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of upstreams to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          description: Number of upstreams to skip
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of upstreams
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpstreamListResponse'
+
+    post:
+      summary: Create upstream
+      description: Create a new upstream configuration
+      operationId: createUpstream
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpstreamRequest'
+            examples:
+              basic:
+                summary: Basic upstream
+                value:
+                  name: Backend Service
+                  targets:
+                    - url: http://backend1:8080
+                      weight: 100
+                    - url: http://backend2:8080
+                      weight: 100
+                  algorithm: round_robin
+              with_health_check:
+                summary: Upstream with health check
+                value:
+                  name: Backend Service
+                  targets:
+                    - url: http://backend1:8080
+                      weight: 100
+                  algorithm: round_robin
+                  health_check:
+                    enabled: true
+                    path: /health
+                    interval: 30
+                    timeout: 5
+      responses:
+        '201':
+          description: Upstream created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpstreamResponse'
+        '400':
+          description: Bad request - validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Admin-Key
+      description: Admin API key for authentication
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for user authentication
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy, degraded]
+          example: healthy
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix timestamp
+          example: 1640995200
+        components:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              status:
+                type: string
+                enum: [healthy, unhealthy, degraded]
+              latency:
+                type: string
+                example: 2ms
+              active_targets:
+                type: integer
+                example: 2
+
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          example: admin
+        password:
+          type: string
+          format: password
+          example: password
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT access token
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        token_type:
+          type: string
+          example: Bearer
+        expires_in:
+          type: string
+          description: Token expiration duration
+          example: 24h
+        refresh_token:
+          type: string
+          description: Refresh token for obtaining new access tokens
+          example: rt_1234567890abcdef
+
+    ApiKeyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Human-readable name for the API key
+          example: my-api-key
+
+    ApiKeyResponse:
+      type: object
+      properties:
+        api_key:
+          type: string
+          description: Generated API key
+          example: sk-1234567890abcdef
+        name:
+          type: string
+          description: Name of the API key
+          example: my-api-key
+        created:
+          type: integer
+          format: int64
+          description: Unix timestamp of creation
+          example: 1640995200
+
+    Route:
+      type: object
+      required:
+        - id
+        - name
+        - rules
+        - upstream_id
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the route
+          example: route-001
+        name:
+          type: string
+          description: Human-readable name for the route
+          example: API Route
+        rules:
+          $ref: '#/components/schemas/RouteRules'
+        upstream_id:
+          type: string
+          description: ID of the upstream service
+          example: upstream-001
+        priority:
+          type: integer
+          description: Route priority (higher values have higher priority)
+          minimum: 0
+          maximum: 1000
+          default: 100
+          example: 100
+        metadata:
+          type: object
+          description: Additional metadata for the route
+          additionalProperties:
+            type: string
+          example:
+            environment: production
+            team: backend
+        created_at:
+          type: integer
+          format: int64
+          description: Unix timestamp of creation
+          example: 1640995200
+        updated_at:
+          type: integer
+          format: int64
+          description: Unix timestamp of last update
+          example: 1640995200
+
+    RouteRules:
+      type: object
+      properties:
+        hosts:
+          type: array
+          items:
+            type: string
+          description: List of host patterns to match
+          example:
+            - api.example.com
+            - "*.api.example.com"
+        paths:
+          type: array
+          items:
+            $ref: '#/components/schemas/PathRule'
+          description: List of path matching rules
+        methods:
+          type: array
+          items:
+            type: string
+            enum: [GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS]
+          description: List of HTTP methods to match
+          example:
+            - GET
+            - POST
+
+    PathRule:
+      type: object
+      required:
+        - type
+        - value
+      properties:
+        type:
+          type: string
+          enum: [exact, prefix, regex]
+          description: Type of path matching
+          example: prefix
+        value:
+          type: string
+          description: Path pattern to match
+          example: /api
+
+    RouteRequest:
+      type: object
+      required:
+        - name
+        - rules
+        - upstream_id
+      properties:
+        name:
+          type: string
+          description: Human-readable name for the route
+          example: API Route
+        rules:
+          $ref: '#/components/schemas/RouteRules'
+        upstream_id:
+          type: string
+          description: ID of the upstream service
+          example: upstream-001
+        priority:
+          type: integer
+          description: Route priority
+          minimum: 0
+          maximum: 1000
+          default: 100
+          example: 100
+        metadata:
+          type: object
+          description: Additional metadata
+          additionalProperties:
+            type: string
+
+    RouteResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Route created successfully
+        route:
+          $ref: '#/components/schemas/Route'
+
+    RouteListResponse:
+      type: object
+      properties:
+        routes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Route'
+        total:
+          type: integer
+          description: Total number of routes
+          example: 150
+        limit:
+          type: integer
+          description: Maximum number of routes returned
+          example: 50
+        offset:
+          type: integer
+          description: Number of routes skipped
+          example: 0
+        has_more:
+          type: boolean
+          description: Whether there are more routes available
+          example: true
+
+    Upstream:
+      type: object
+      required:
+        - id
+        - name
+        - targets
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the upstream
+          example: upstream-001
+        name:
+          type: string
+          description: Human-readable name for the upstream
+          example: API Backend
+        targets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Target'
+          description: List of backend targets
+        algorithm:
+          type: string
+          enum: [round_robin, weighted, ip_hash, least_connections]
+          description: Load balancing algorithm
+          default: round_robin
+          example: round_robin
+        health_check:
+          $ref: '#/components/schemas/HealthCheck'
+        timeout:
+          $ref: '#/components/schemas/TimeoutConfig'
+        created_at:
+          type: integer
+          format: int64
+          example: 1640995200
+        updated_at:
+          type: integer
+          format: int64
+          example: 1640995200
+
+    Target:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Target URL
+          example: http://backend1:8080
+        weight:
+          type: integer
+          description: Weight for load balancing
+          minimum: 1
+          maximum: 1000
+          default: 100
+          example: 100
+
+    HealthCheck:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: false
+        path:
+          type: string
+          description: Health check endpoint path
+          example: /health
+        interval:
+          type: integer
+          description: Health check interval in seconds
+          minimum: 1
+          default: 30
+          example: 30
+        timeout:
+          type: integer
+          description: Health check timeout in seconds
+          minimum: 1
+          default: 5
+          example: 5
+        healthy_threshold:
+          type: integer
+          description: Number of successful checks to mark as healthy
+          minimum: 1
+          default: 2
+          example: 2
+        unhealthy_threshold:
+          type: integer
+          description: Number of failed checks to mark as unhealthy
+          minimum: 1
+          default: 3
+          example: 3
+
+    TimeoutConfig:
+      type: object
+      properties:
+        connect:
+          type: integer
+          description: Connection timeout in seconds
+          minimum: 1
+          default: 5
+          example: 5
+        send:
+          type: integer
+          description: Send timeout in seconds
+          minimum: 1
+          default: 30
+          example: 30
+        read:
+          type: integer
+          description: Read timeout in seconds
+          minimum: 1
+          default: 30
+          example: 30
+
+    UpstreamRequest:
+      type: object
+      required:
+        - name
+        - targets
+      properties:
+        name:
+          type: string
+          description: Human-readable name for the upstream
+          example: API Backend
+        targets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Target'
+          minItems: 1
+        algorithm:
+          type: string
+          enum: [round_robin, weighted, ip_hash, least_connections]
+          default: round_robin
+        health_check:
+          $ref: '#/components/schemas/HealthCheck'
+        timeout:
+          $ref: '#/components/schemas/TimeoutConfig'
+
+    UpstreamResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Upstream created successfully
+        upstream:
+          $ref: '#/components/schemas/Upstream'
+
+    UpstreamListResponse:
+      type: object
+      properties:
+        upstreams:
+          type: array
+          items:
+            $ref: '#/components/schemas/Upstream'
+        total:
+          type: integer
+          example: 25
+        limit:
+          type: integer
+          example: 50
+        offset:
+          type: integer
+          example: 0
+        has_more:
+          type: boolean
+          example: false
+
+    SuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Operation completed successfully
+
+    Error:
+      type: object
+      required:
+        - error
+        - status
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: Validation failed
+        status:
+          type: integer
+          description: HTTP status code
+          example: 400
+        details:
+          type: string
+          description: Additional error details
+          example: Field 'name' is required
+        code:
+          type: string
+          description: Error code for programmatic handling
+          example: VALIDATION_ERROR
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix timestamp of the error
+          example: 1640995200
+
+  responses:
+    BadRequest:
+      description: Bad request - validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Validation failed
+            status: 400
+            details: Field 'name' is required
+            code: VALIDATION_ERROR
+
+    Unauthorized:
+      description: Unauthorized - authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Unauthorized
+            status: 401
+            details: Invalid or missing authentication credentials
+            code: UNAUTHORIZED
+
+    Forbidden:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Forbidden
+            status: 403
+            details: Insufficient permissions for this operation
+            code: FORBIDDEN
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Not found
+            status: 404
+            details: The requested resource was not found
+            code: NOT_FOUND
+
+    Conflict:
+      description: Conflict - resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Conflict
+            status: 409
+            details: A resource with this identifier already exists
+            code: CONFLICT
+
+    RateLimit:
+      description: Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          description: Request limit per time window
+          schema:
+            type: integer
+            example: 1000
+        X-RateLimit-Remaining:
+          description: Remaining requests in current window
+          schema:
+            type: integer
+            example: 0
+        X-RateLimit-Reset:
+          description: Unix timestamp when rate limit resets
+          schema:
+            type: integer
+            example: 1640995200
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: integer
+            example: 60
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Rate limit exceeded
+            status: 429
+            details: Try again in 60 seconds
+            code: RATE_LIMIT_EXCEEDED
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Internal server error
+            status: 500
+            details: An unexpected error occurred
+            code: INTERNAL_ERROR
+
+tags:
+  - name: Health
+    description: Health check and monitoring endpoints
+  - name: Authentication
+    description: Authentication and authorization endpoints
+  - name: Routes
+    description: Route management operations
+  - name: Upstreams
+    description: Upstream service management
+  - name: Plugins
+    description: Plugin configuration and management
+  - name: Configuration
+    description: Gateway configuration management
+  - name: Portal
+    description: Developer portal API endpoints

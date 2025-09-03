@@ -1,0 +1,78 @@
+# Basic HTTP Server Configuration
+# This is a simplified configuration for the basic HTTP service framework
+
+# Server configuration
+server:
+  # HTTP server address (host:port)
+  address: ":8085"
+  # HTTPS server address (optional)
+  https_address: ":8443"
+  # TLS configuration
+  tls:
+    enabled: false
+    cert_file: ""
+    key_file: ""
+  # Request timeout
+  timeout: 30s
+  # Read timeout - maximum duration for reading the entire request
+  read_timeout: 10s
+  # Write timeout - maximum duration before timing out writes of the response
+  write_timeout: 10s
+  # Idle timeout - maximum amount of time to wait for the next request
+  idle_timeout: 60s
+  # Max header bytes - maximum number of bytes the server will read parsing the request header
+  max_header_bytes: 1048576
+
+# Logging configuration
+logging:
+  level: "info"
+  format: "json"
+  output: "stdout"
+  # Access log
+  access_log:
+    enabled: true
+    format: "json"
+    output: "stdout"
+
+# Metrics configuration (optional)
+metrics:
+  enabled: true
+  path: "/metrics"
+  # Prometheus configuration
+  prometheus:
+    enabled: true
+    namespace: "basic_http_server"
+    subsystem: "server"
+
+# Health check configuration
+health:
+  enabled: true
+  path: "/health"
+
+# Tracing configuration
+tracing:
+  enabled: true
+  # Jaeger configuration
+  jaeger:
+    endpoint: "http://localhost:14268/api/traces"
+    service_name: "stargate-node"
+    sample_rate: 1.0
+  
+# Basic authentication (optional, disabled by default)
+auth:
+  enabled: false
+  jwt:
+    secret: ""
+    algorithm: "HS256"
+    expires_in: "24h"
+  api_key:
+    header: "X-API-Key"
+    query: "api_key"
+    keys: []
+
+# Rate limiting (optional, disabled by default)
+rate_limit:
+  enabled: false
+  default_rate: 1000  # requests per second
+  burst: 100
+  storage: "memory"

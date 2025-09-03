@@ -1,0 +1,133 @@
+# Sample routing configuration for Stargate
+# This file demonstrates the routing configuration format
+
+routes:
+  - id: "api-route"
+    name: "Updated API Route"
+    priority: 100
+    rules:
+      hosts:
+        - "api.example.com"
+        - "*.api.example.com"
+      paths:
+        - type: "prefix"
+          value: "/api/v1"
+        - type: "prefix"
+          value: "/api/v2"
+      methods:
+        - "GET"
+        - "POST"
+        - "PUT"
+        - "DELETE"
+      headers:
+        - name: "Content-Type"
+          match_type: "regex"
+          value: "application/(json|xml)"
+    upstream_id: "api-upstream"
+    metadata:
+      description: "Main API routing"
+      version: "1.0"
+
+  - id: "web-route"
+    name: "Web Route"
+    priority: 50
+    rules:
+      hosts:
+        - "example.com"
+        - "www.example.com"
+      paths:
+        - type: "prefix"
+          value: "/"
+      methods:
+        - "GET"
+    upstream_id: "web-upstream"
+    metadata:
+      description: "Web frontend routing"
+      version: "1.0"
+
+  - id: "admin-route"
+    name: "Admin Route"
+    priority: 200
+    rules:
+      hosts:
+        - "admin.example.com"
+      paths:
+        - type: "prefix"
+          value: "/admin"
+      methods:
+        - "GET"
+        - "POST"
+      headers:
+        - name: "Authorization"
+          match_type: "exists"
+    upstream_id: "admin-upstream"
+    metadata:
+      description: "Admin panel routing"
+      version: "1.0"
+      requires_auth: "true"
+
+upstreams:
+  - id: "api-upstream"
+    name: "API Backend"
+    load_balancer:
+      algorithm: "round_robin"
+    health_check:
+      enabled: true
+      path: "/health"
+      interval: "30s"
+      timeout: "5s"
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+    targets:
+      - url: "http://api-server-1:8080"
+        weight: 100
+        metadata:
+          zone: "us-east-1a"
+      - url: "http://api-server-2:8080"
+        weight: 100
+        metadata:
+          zone: "us-east-1b"
+    metadata:
+      description: "API backend servers"
+      version: "1.0"
+
+  - id: "web-upstream"
+    name: "Web Frontend"
+    load_balancer:
+      algorithm: "round_robin"
+    health_check:
+      enabled: true
+      path: "/"
+      interval: "60s"
+      timeout: "10s"
+      healthy_threshold: 2
+      unhealthy_threshold: 2
+    targets:
+      - url: "http://web-server-1:80"
+        weight: 100
+      - url: "http://web-server-2:80"
+        weight: 100
+    metadata:
+      description: "Web frontend servers"
+      version: "1.0"
+
+  - id: "admin-upstream"
+    name: "Admin Backend"
+    load_balancer:
+      algorithm: "ip_hash"
+    health_check:
+      enabled: true
+      path: "/admin/health"
+      interval: "30s"
+      timeout: "5s"
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+    targets:
+      - url: "http://admin-server:8080"
+        weight: 100
+        metadata:
+          secure: "true"
+    metadata:
+      description: "Admin backend server"
+      version: "1.0"
+      security_level: "high"

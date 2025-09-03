@@ -1,0 +1,231 @@
+# Stargate Node Configuration
+# Data Plane Configuration
+
+# Server configuration
+server:
+  # HTTP server address
+  address: ":8080"
+  # HTTPS server address (optional)
+  https_address: ":8443"
+  # TLS configuration
+  tls:
+    enabled: false
+    cert_file: ""
+    key_file: ""
+    # ACME (Let's Encrypt) configuration
+    acme:
+      enabled: false
+      domains: []
+      email: ""
+      cache_dir: "./acme-cache"
+      directory_url: ""  # Leave empty for production, use "https://acme-staging-v02.api.letsencrypt.org/directory" for staging
+      accept_tos: false
+  # Request timeout
+  timeout: 30s
+  # Read timeout
+  read_timeout: 10s
+  # Write timeout
+  write_timeout: 10s
+  # Idle timeout
+  idle_timeout: 60s
+  # Max header bytes
+  max_header_bytes: 1048576
+
+# Proxy configuration
+proxy:
+  # Request buffer size
+  buffer_size: 32768
+  # Connection pool size per upstream
+  pool_size: 100
+  # Connection timeout
+  connect_timeout: 5s
+  # Response header timeout
+  response_header_timeout: 10s
+  # Keep alive timeout
+  keep_alive_timeout: 30s
+  # Max idle connections
+  max_idle_conns: 100
+  # Max idle connections per host
+  max_idle_conns_per_host: 10
+  # WebSocket configuration
+  websocket:
+    enabled: true
+    buffer_size: 32768
+    read_timeout: 60s
+    write_timeout: 60s
+    ping_interval: 30s
+    pong_timeout: 10s
+    max_connections: 1000
+    compression_level: 1
+
+# Load balancer configuration
+load_balancer:
+  # Default algorithm: round_robin, weighted, ip_hash
+  default_algorithm: "round_robin"
+  # Health check configuration
+  health_check:
+    enabled: true
+    interval: 30s
+    timeout: 5s
+    healthy_threshold: 2
+    unhealthy_threshold: 3
+    # HTTP health check path
+    path: "/health"
+    # Passive health check configuration
+    passive:
+      enabled: true
+      consecutive_failures: 3
+      isolation_duration: 30s
+      recovery_interval: 10s
+      consecutive_successes: 2
+      failure_status_codes: [500, 501, 502, 503, 504, 505]
+      timeout_as_failure: true
+
+# Rate limiting configuration
+rate_limit:
+  enabled: false
+  # Default rate limit (requests per window)
+  default_rate: 1000
+  # Burst size
+  burst: 100
+  # Storage type: memory, redis
+  storage: "memory"
+  # Rate limiting strategy: fixed_window, sliding_window, token_bucket, leaky_bucket
+  strategy: "fixed_window"
+  # Client identifier strategy: ip, user, api_key, combined
+  identifier_strategy: "ip"
+  # Time window size for window-based algorithms
+  window_size: "1m"
+  # Cleanup interval for expired data
+  cleanup_interval: "5m"
+  # Skip counting successful requests (2xx responses)
+  skip_successful_requests: false
+  # Skip counting failed requests (4xx/5xx responses)
+  skip_failed_requests: false
+  # Custom headers to add to rate limited responses
+  custom_headers: {}
+  # Paths to exclude from rate limiting
+  excluded_paths:
+    - "/health"
+    - "/metrics"
+  # IP addresses to exclude from rate limiting
+  excluded_ips:
+    - "127.0.0.1"
+    - "::1"
+  # Per-route rate limiting configuration
+  per_route: {}
+  # Redis configuration (if storage is redis)
+  redis:
+    address: "localhost:6379"
+    password: ""
+    db: 0
+
+# Circuit breaker configuration
+circuit_breaker:
+  enabled: false
+  # Failure threshold
+  failure_threshold: 5
+  # Recovery timeout
+  recovery_timeout: 60s
+  # Request volume threshold
+  request_volume_threshold: 20
+  # Error percentage threshold
+  error_percentage_threshold: 50
+
+# Authentication configuration
+auth:
+  enabled: false
+  # JWT configuration
+  jwt:
+    secret: ""
+    algorithm: "HS256"
+    expires_in: "24h"
+  # API Key configuration
+  api_key:
+    header: "X-API-Key"
+    query: "api_key"
+
+# Logging configuration
+logging:
+  level: "info"
+  format: "json"
+  output: "stdout"
+  # Access log
+  access_log:
+    enabled: true
+    format: "combined"
+    output: "stdout"
+
+# Metrics configuration
+metrics:
+  enabled: true
+  path: "/metrics"
+  # Prometheus configuration
+  prometheus:
+    enabled: true
+    namespace: "stargate"
+    subsystem: "node"
+
+# Tracing configuration
+tracing:
+  enabled: false
+  # Jaeger configuration
+  jaeger:
+    endpoint: "http://localhost:14268/api/traces"
+    service_name: "stargate-node"
+    sample_rate: 0.1
+
+# Configuration store (for control plane)
+store:
+  # Store type: etcd, consul, file
+  type: "etcd"
+  # Etcd configuration
+  etcd:
+    endpoints:
+      - "localhost:2379"
+    timeout: 5s
+    # TLS configuration
+    tls:
+      enabled: false
+      cert_file: ""
+      key_file: ""
+      ca_file: ""
+    # Authentication
+    username: ""
+    password: ""
+  # Configuration key prefix
+  key_prefix: "/stargate/config"
+  # Watch for configuration changes
+  watch: true
+
+# Configuration source (for data plane routing configuration)
+config:
+  source:
+    # Configuration source driver: "file" or "etcd"
+    driver: "file"
+    # Polling interval for file source (ignored for etcd)
+    poll_interval: 1s
+    # File source configuration
+    file:
+      # Path to the routing configuration file
+      path: "routes.yaml"
+      # How often to check for file changes
+      poll_interval: 1s
+    # Etcd source configuration
+    etcd:
+      # Etcd endpoints
+      endpoints:
+        - "localhost:2379"
+      # Etcd key to watch for routing configuration
+      key: "/stargate/routes"
+      # Connection timeout
+      timeout: 5s
+      # TLS configuration
+      tls:
+        enabled: false
+        cert_file: ""
+        key_file: ""
+        ca_file: ""
+      # Authentication
+      username: ""
+      password: ""

@@ -1,0 +1,229 @@
+# 测试Mock响应中间件配置文件
+# 用于验证Mock响应功能
+
+server:
+  address: ":8080"
+  timeout: 30s
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 60s
+
+# 启用Mock响应中间件
+mock_response:
+  enabled: true
+  rules:
+    # 规则1: 精确路径匹配
+    - id: "api-users-mock"
+      name: "API Users Mock"
+      enabled: true
+      priority: 100
+      conditions:
+        methods: ["GET"]
+        paths:
+          - type: "exact"
+            value: "/api/users"
+      response:
+        status_code: 200
+        headers:
+          Content-Type: "application/json"
+          X-Mock-Response: "true"
+          X-Mock-Rule: "api-users-mock"
+        body: |
+          {
+            "users": [
+              {"id": 1, "name": "John Doe", "email": "john@example.com"},
+              {"id": 2, "name": "Jane Smith", "email": "jane@example.com"}
+            ],
+            "total": 2,
+            "mock": true
+          }
+
+    # 规则2: 前缀匹配 + 方法匹配
+    - id: "api-posts-mock"
+      name: "API Posts Mock"
+      enabled: true
+      priority: 90
+      conditions:
+        methods: ["POST"]
+        paths:
+          - type: "prefix"
+            value: "/api/posts"
+      response:
+        status_code: 201
+        headers:
+          Content-Type: "application/json"
+          X-Mock-Response: "true"
+          X-Mock-Rule: "api-posts-mock"
+        body: |
+          {
+            "id": 123,
+            "title": "Mock Post",
+            "content": "This is a mock post created by the mock response middleware",
+            "created_at": "${timestamp}",
+            "method": "${method}",
+            "path": "${path}"
+          }
+
+    # 规则3: 正则表达式匹配
+    - id: "api-user-detail-mock"
+      name: "API User Detail Mock"
+      enabled: true
+      priority: 95
+      conditions:
+        methods: ["GET"]
+        paths:
+          - type: "regex"
+            value: "^/api/users/\\d+$"
+      response:
+        status_code: 200
+        headers:
+          Content-Type: "application/json"
+          X-Mock-Response: "true"
+          X-Mock-Rule: "api-user-detail-mock"
+        body: |
+          {
+            "id": 1,
+            "name": "Mock User",
+            "email": "mock@example.com",
+            "path": "${path}",
+            "user_agent": "${header:User-Agent}",
+            "mock": true
+          }
+
+    # 规则4: 查询参数匹配
+    - id: "api-search-mock"
+      name: "API Search Mock"
+      enabled: true
+      priority: 85
+      conditions:
+        methods: ["GET"]
+        paths:
+          - type: "exact"
+            value: "/api/search"
+        query_params:
+          type: "user"
+          format: "json"
+      response:
+        status_code: 200
+        headers:
+          Content-Type: "application/json"
+          X-Mock-Response: "true"
+          X-Mock-Rule: "api-search-mock"
+        body: |
+          {
+            "results": [
+              {"id": 1, "name": "Search Result 1"},
+              {"id": 2, "name": "Search Result 2"}
+            ],
+            "query": "${query:q}",
+            "type": "${query:type}",
+            "format": "${query:format}",
+            "total": 2,
+            "mock": true
+          }
+
+    # 规则5: 请求头匹配
+    - id: "api-admin-mock"
+      name: "API Admin Mock"
+      enabled: true
+      priority: 110
+      conditions:
+        methods: ["GET"]
+        paths:
+          - type: "prefix"
+            value: "/api/admin"
+        headers:
+          X-Admin-Token: "admin-secret"
+      response:
+        status_code: 200
+        headers:
+          Content-Type: "application/json"
+          X-Mock-Response: "true"
+          X-Mock-Rule: "api-admin-mock"
+        body: |
+          {
+            "message": "Admin access granted",
+            "admin": true,
+            "token": "${header:X-Admin-Token}",
+            "mock": true
+          }
+
+    # 规则6: 错误响应模拟
+    - id: "api-error-mock"
+      name: "API Error Mock"
+      enabled: true
+      priority: 80
+      conditions:
+        methods: ["GET"]
+        paths:
+          - type: "exact"
+            value: "/api/error"
+      response:
+        status_code: 500
+        headers:
+          Content-Type: "application/json"
+          X-Mock-Response: "true"
+          X-Mock-Rule: "api-error-mock"
+        body: |
+          {
+            "error": "Internal Server Error",
+            "message": "This is a mock error response",
+            "code": 500,
+            "timestamp": "${timestamp}",
+            "mock": true
+          }
+
+  # 按路由配置
+  per_route:
+    special-route:
+      enabled: true
+      rules:
+        - id: "special-route-mock"
+          name: "Special Route Mock"
+          enabled: true
+          priority: 200
+          conditions:
+            paths:
+              - type: "exact"
+                value: "/special"
+          response:
+            status_code: 200
+            headers:
+              Content-Type: "application/json"
+              X-Mock-Response: "true"
+              X-Mock-Rule: "special-route-mock"
+            body: |
+              {
+                "message": "This is a special route mock",
+                "route": "special-route",
+                "mock": true
+              }
+
+# 日志配置
+logging:
+  level: "debug"
+  format: "json"
+  output: "stdout"
+
+# 禁用其他中间件以专注测试Mock响应
+cors:
+  enabled: false
+
+header_transform:
+  enabled: false
+
+ip_acl:
+  enabled: false
+
+rate_limit:
+  enabled: false
+
+circuit_breaker:
+  enabled: false
+
+auth:
+  enabled: false
+
+metrics:
+  enabled: true
+  path: "/metrics"

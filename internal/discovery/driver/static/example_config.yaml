@@ -1,0 +1,216 @@
+# Static Service Discovery Configuration Example
+# This file demonstrates how to configure static service instances
+
+services:
+  # Example web service with multiple instances
+  web-service:
+    instances:
+      - id: web-1
+        host: 192.168.1.10
+        port: 8080
+        weight: 1
+        priority: 0
+        healthy: true
+        tags:
+          env: production
+          datacenter: dc1
+          role: frontend
+        metadata:
+          version: "1.2.3"
+          build: "20231201-abc123"
+          team: "web-team"
+        status: up
+        version: "1.2.3"
+        zone: us-east-1a
+        region: us-east-1
+      
+      - id: web-2
+        host: 192.168.1.11
+        port: 8080
+        weight: 2
+        priority: 0
+        healthy: true
+        tags:
+          env: production
+          datacenter: dc1
+          role: frontend
+        metadata:
+          version: "1.2.3"
+          build: "20231201-abc123"
+          team: "web-team"
+        status: up
+        version: "1.2.3"
+        zone: us-east-1b
+        region: us-east-1
+      
+      - id: web-3
+        host: 192.168.1.12
+        port: 8080
+        weight: 1
+        priority: 1
+        healthy: false
+        tags:
+          env: production
+          datacenter: dc2
+          role: frontend
+        metadata:
+          version: "1.2.2"
+          build: "20231115-def456"
+          team: "web-team"
+        status: down
+        version: "1.2.2"
+        zone: us-west-1a
+        region: us-west-1
+
+  # Example API service
+  api-service:
+    instances:
+      - id: api-1
+        host: 10.0.1.100
+        port: 9090
+        weight: 1
+        priority: 0
+        healthy: true
+        tags:
+          env: production
+          service_type: api
+          protocol: http
+        metadata:
+          version: "2.1.0"
+          database: "postgres"
+          cache: "redis"
+        status: up
+        version: "2.1.0"
+        zone: us-east-1a
+        region: us-east-1
+      
+      - id: api-2
+        host: 10.0.1.101
+        port: 9090
+        weight: 1
+        priority: 0
+        healthy: true
+        tags:
+          env: production
+          service_type: api
+          protocol: http
+        metadata:
+          version: "2.1.0"
+          database: "postgres"
+          cache: "redis"
+        status: up
+        version: "2.1.0"
+        zone: us-east-1b
+        region: us-east-1
+
+  # Example database service
+  database-service:
+    instances:
+      - id: db-primary
+        host: db-primary.internal
+        port: 5432
+        weight: 1
+        priority: 0
+        healthy: true
+        tags:
+          env: production
+          role: primary
+          database_type: postgresql
+        metadata:
+          version: "13.8"
+          replication: "master"
+          backup_enabled: "true"
+        status: up
+        version: "13.8"
+        zone: us-east-1a
+        region: us-east-1
+      
+      - id: db-replica-1
+        host: db-replica-1.internal
+        port: 5432
+        weight: 1
+        priority: 1
+        healthy: true
+        tags:
+          env: production
+          role: replica
+          database_type: postgresql
+        metadata:
+          version: "13.8"
+          replication: "slave"
+          read_only: "true"
+        status: up
+        version: "13.8"
+        zone: us-east-1b
+        region: us-east-1
+      
+      - id: db-replica-2
+        host: db-replica-2.internal
+        port: 5432
+        weight: 1
+        priority: 1
+        healthy: true
+        tags:
+          env: production
+          role: replica
+          database_type: postgresql
+        metadata:
+          version: "13.8"
+          replication: "slave"
+          read_only: "true"
+        status: up
+        version: "13.8"
+        zone: us-west-1a
+        region: us-west-1
+
+  # Example cache service
+  cache-service:
+    instances:
+      - id: redis-1
+        host: cache-1.internal
+        port: 6379
+        weight: 1
+        priority: 0
+        healthy: true
+        tags:
+          env: production
+          cache_type: redis
+          cluster_role: master
+        metadata:
+          version: "6.2.7"
+          memory: "8GB"
+          persistence: "enabled"
+        status: up
+        version: "6.2.7"
+        zone: us-east-1a
+        region: us-east-1
+      
+      - id: redis-2
+        host: cache-2.internal
+        port: 6379
+        weight: 1
+        priority: 1
+        healthy: true
+        tags:
+          env: production
+          cache_type: redis
+          cluster_role: replica
+        metadata:
+          version: "6.2.7"
+          memory: "8GB"
+          persistence: "enabled"
+        status: up
+        version: "6.2.7"
+        zone: us-east-1b
+        region: us-east-1
+
+  # Example microservice with minimal configuration
+  notification-service:
+    instances:
+      - host: notification.internal
+        port: 8080
+        # ID will be auto-generated as "notification.internal:8080"
+        # Weight defaults to 1
+        # Priority defaults to 0
+        # Healthy defaults to true if status is not specified
+        # Status defaults to "up"

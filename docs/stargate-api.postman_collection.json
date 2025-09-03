@@ -1,0 +1,734 @@
+{
+  "info": {
+    "name": "Stargate API Collection",
+    "description": "Complete collection of Stargate API endpoints for testing and development",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "key",
+        "value": "X-Admin-Key",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "{{api_key}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:9090",
+      "type": "string"
+    },
+    {
+      "key": "portal_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "api_key",
+      "value": "your-api-key-here",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health & Status",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Check the health status of the API server"
+          },
+          "response": []
+        },
+        {
+          "name": "Detailed Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health?detailed=true",
+              "host": ["{{base_url}}"],
+              "path": ["health"],
+              "query": [
+                {
+                  "key": "detailed",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Get detailed health information including component status"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/metrics",
+              "host": ["{{base_url}}"],
+              "path": ["metrics"]
+            },
+            "description": "Get Prometheus metrics for monitoring"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('jwt_token', response.token);",
+                  "    console.log('JWT token saved to collection variables');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"password\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Authenticate user and get JWT token"
+          },
+          "response": []
+        },
+        {
+          "name": "Generate API Key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('api_key', response.api_key);",
+                  "    console.log('API key saved to collection variables');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"postman-test-key\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/api-keys",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "api-keys"]
+            },
+            "description": "Generate a new API key for authentication"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Routes",
+      "item": [
+        {
+          "name": "List Routes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/routes?limit=10&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "routes"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Get a paginated list of all routes"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Route",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('route_id', response.route.id);",
+                  "    console.log('Route ID saved:', response.route.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test API Route\",\n  \"rules\": {\n    \"hosts\": [\"api.example.com\"],\n    \"paths\": [\n      {\n        \"type\": \"prefix\",\n        \"value\": \"/api\"\n      }\n    ],\n    \"methods\": [\"GET\", \"POST\"]\n  },\n  \"upstream_id\": \"{{upstream_id}}\",\n  \"priority\": 100,\n  \"metadata\": {\n    \"environment\": \"test\",\n    \"created_by\": \"postman\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/routes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "routes"]
+            },
+            "description": "Create a new route"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Route",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/routes/{{route_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "routes", "{{route_id}}"]
+            },
+            "description": "Get a specific route by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Route",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Test API Route\",\n  \"rules\": {\n    \"hosts\": [\"api.example.com\", \"api-v2.example.com\"],\n    \"paths\": [\n      {\n        \"type\": \"prefix\",\n        \"value\": \"/api\"\n      }\n    ],\n    \"methods\": [\"GET\", \"POST\", \"PUT\", \"DELETE\"]\n  },\n  \"upstream_id\": \"{{upstream_id}}\",\n  \"priority\": 200,\n  \"metadata\": {\n    \"environment\": \"test\",\n    \"updated_by\": \"postman\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/routes/{{route_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "routes", "{{route_id}}"]
+            },
+            "description": "Update an existing route"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Route",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/routes/{{route_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "routes", "{{route_id}}"]
+            },
+            "description": "Delete a route by ID"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Upstreams",
+      "item": [
+        {
+          "name": "List Upstreams",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/upstreams",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "upstreams"]
+            },
+            "description": "Get a list of all upstreams"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Upstream",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('upstream_id', response.upstream.id);",
+                  "    console.log('Upstream ID saved:', response.upstream.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Backend Service\",\n  \"targets\": [\n    {\n      \"url\": \"http://httpbin.org\",\n      \"weight\": 100\n    }\n  ],\n  \"algorithm\": \"round_robin\",\n  \"health_check\": {\n    \"enabled\": true,\n    \"path\": \"/status/200\",\n    \"interval\": 30,\n    \"timeout\": 5,\n    \"healthy_threshold\": 2,\n    \"unhealthy_threshold\": 3\n  },\n  \"timeout\": {\n    \"connect\": 5,\n    \"send\": 30,\n    \"read\": 30\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/upstreams",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "upstreams"]
+            },
+            "description": "Create a new upstream"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Upstream",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/upstreams/{{upstream_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "upstreams", "{{upstream_id}}"]
+            },
+            "description": "Get a specific upstream by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Upstream",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Backend Service\",\n  \"targets\": [\n    {\n      \"url\": \"http://httpbin.org\",\n      \"weight\": 70\n    },\n    {\n      \"url\": \"http://postman-echo.com\",\n      \"weight\": 30\n    }\n  ],\n  \"algorithm\": \"weighted\",\n  \"health_check\": {\n    \"enabled\": true,\n    \"path\": \"/status/200\",\n    \"interval\": 30,\n    \"timeout\": 5\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/upstreams/{{upstream_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "upstreams", "{{upstream_id}}"]
+            },
+            "description": "Update an existing upstream"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Upstream",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/upstreams/{{upstream_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "upstreams", "{{upstream_id}}"]
+            },
+            "description": "Delete an upstream by ID"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Plugins",
+      "item": [
+        {
+          "name": "List Plugins",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/plugins",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "plugins"]
+            },
+            "description": "Get a list of all plugins"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Rate Limit Plugin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('plugin_id', response.plugin.id);",
+                  "    console.log('Plugin ID saved:', response.plugin.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Rate Limiter\",\n  \"type\": \"rate_limit\",\n  \"route_id\": \"{{route_id}}\",\n  \"enabled\": true,\n  \"config\": {\n    \"requests_per_minute\": 100,\n    \"requests_per_hour\": 1000,\n    \"burst\": 10,\n    \"key_source\": \"ip\",\n    \"response_headers\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/plugins",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "plugins"]
+            },
+            "description": "Create a rate limiting plugin"
+          },
+          "response": []
+        },
+        {
+          "name": "Create CORS Plugin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CORS Support\",\n  \"type\": \"cors\",\n  \"route_id\": \"{{route_id}}\",\n  \"enabled\": true,\n  \"config\": {\n    \"allowed_origins\": [\"*\"],\n    \"allowed_methods\": [\"GET\", \"POST\", \"PUT\", \"DELETE\", \"OPTIONS\"],\n    \"allowed_headers\": [\"Content-Type\", \"Authorization\", \"X-Requested-With\"],\n    \"exposed_headers\": [\"X-Total-Count\"],\n    \"allow_credentials\": true,\n    \"max_age\": 86400\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/plugins",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "plugins"]
+            },
+            "description": "Create a CORS plugin"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Plugin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/plugins/{{plugin_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "plugins", "{{plugin_id}}"]
+            },
+            "description": "Get a specific plugin by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Plugin",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Rate Limiter\",\n  \"type\": \"rate_limit\",\n  \"route_id\": \"{{route_id}}\",\n  \"enabled\": true,\n  \"config\": {\n    \"requests_per_minute\": 200,\n    \"requests_per_hour\": 2000,\n    \"burst\": 20,\n    \"key_source\": \"ip\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/plugins/{{plugin_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "plugins", "{{plugin_id}}"]
+            },
+            "description": "Update an existing plugin"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Plugin",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/plugins/{{plugin_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "plugins", "{{plugin_id}}"]
+            },
+            "description": "Delete a plugin by ID"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Configuration",
+      "item": [
+        {
+          "name": "Get Configuration",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/config",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "config"]
+            },
+            "description": "Get complete gateway configuration"
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Configuration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"routes\": [],\n  \"upstreams\": [],\n  \"plugins\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/config/validate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "config", "validate"]
+            },
+            "description": "Validate configuration before applying"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Portal API",
+      "item": [
+        {
+          "name": "Portal Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('jwt_token', response.token);",
+                  "    console.log('Portal JWT token saved');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"developer\",\n  \"password\": \"password\"\n}"
+            },
+            "url": {
+              "raw": "{{portal_url}}/api/v1/auth/login",
+              "host": ["{{portal_url}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Login to the developer portal"
+          },
+          "response": []
+        },
+        {
+          "name": "List Portal APIs",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{portal_url}}/api/v1/portal/apis",
+              "host": ["{{portal_url}}"],
+              "path": ["api", "v1", "portal", "apis"]
+            },
+            "description": "Get list of available APIs in the portal"
+          },
+          "response": []
+        },
+        {
+          "name": "Get API Details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{portal_url}}/api/v1/portal/apis/{{api_id}}",
+              "host": ["{{portal_url}}"],
+              "path": ["api", "v1", "portal", "apis", "{{api_id}}"]
+            },
+            "description": "Get detailed information about a specific API"
+          },
+          "response": []
+        },
+        {
+          "name": "Test API Endpoint",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"GET\",\n  \"url\": \"/get\",\n  \"headers\": {\n    \"User-Agent\": \"Postman-Test\"\n  },\n  \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{portal_url}}/api/v1/portal/test",
+              "host": ["{{portal_url}}"],
+              "path": ["api", "v1", "portal", "test"]
+            },
+            "description": "Test an API endpoint through the portal proxy"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Dashboard",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{portal_url}}/api/v1/portal/dashboard",
+              "host": ["{{portal_url}}"],
+              "path": ["api", "v1", "portal", "dashboard"]
+            },
+            "description": "Get dashboard statistics and metrics"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

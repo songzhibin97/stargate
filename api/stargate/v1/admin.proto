@@ -1,0 +1,181 @@
+syntax = "proto3";
+
+package stargate.v1;
+
+option go_package = "github.com/songzhibin97/stargate/pkg/stargate/api/v1";
+
+// Admin API service for Stargate control plane
+service AdminService {
+  // Route management
+  rpc CreateRoute(CreateRouteRequest) returns (CreateRouteResponse);
+  rpc UpdateRoute(UpdateRouteRequest) returns (UpdateRouteResponse);
+  rpc DeleteRoute(DeleteRouteRequest) returns (DeleteRouteResponse);
+  rpc GetRoute(GetRouteRequest) returns (GetRouteResponse);
+  rpc ListRoutes(ListRoutesRequest) returns (ListRoutesResponse);
+  
+  // Upstream management
+  rpc CreateUpstream(CreateUpstreamRequest) returns (CreateUpstreamResponse);
+  rpc UpdateUpstream(UpdateUpstreamRequest) returns (UpdateUpstreamResponse);
+  rpc DeleteUpstream(DeleteUpstreamRequest) returns (DeleteUpstreamResponse);
+  rpc GetUpstream(GetUpstreamRequest) returns (GetUpstreamResponse);
+  rpc ListUpstreams(ListUpstreamsRequest) returns (ListUpstreamsResponse);
+  
+  // Health check
+  rpc GetHealth(GetHealthRequest) returns (GetHealthResponse);
+  
+  // Configuration management
+  rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
+  rpc UpdateConfig(UpdateConfigRequest) returns (UpdateConfigResponse);
+}
+
+// Route related messages
+message Route {
+  string id = 1;
+  string name = 2;
+  repeated string hosts = 3;
+  repeated string paths = 4;
+  repeated string methods = 5;
+  string upstream_id = 6;
+  map<string, string> metadata = 7;
+  int64 created_at = 8;
+  int64 updated_at = 9;
+}
+
+message CreateRouteRequest {
+  Route route = 1;
+}
+
+message CreateRouteResponse {
+  Route route = 1;
+}
+
+message UpdateRouteRequest {
+  string id = 1;
+  Route route = 2;
+}
+
+message UpdateRouteResponse {
+  Route route = 1;
+}
+
+message DeleteRouteRequest {
+  string id = 1;
+}
+
+message DeleteRouteResponse {
+  bool success = 1;
+}
+
+message GetRouteRequest {
+  string id = 1;
+}
+
+message GetRouteResponse {
+  Route route = 1;
+}
+
+message ListRoutesRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message ListRoutesResponse {
+  repeated Route routes = 1;
+  int32 total = 2;
+}
+
+// Upstream related messages
+message Upstream {
+  string id = 1;
+  string name = 2;
+  string algorithm = 3; // round_robin, weighted, ip_hash
+  repeated Target targets = 4;
+  HealthCheck health_check = 5;
+  map<string, string> metadata = 6;
+  int64 created_at = 7;
+  int64 updated_at = 8;
+}
+
+message Target {
+  string host = 1;
+  int32 port = 2;
+  int32 weight = 3;
+  bool healthy = 4;
+}
+
+message HealthCheck {
+  string type = 1; // http, tcp
+  string path = 2;
+  int32 interval = 3;
+  int32 timeout = 4;
+  int32 healthy_threshold = 5;
+  int32 unhealthy_threshold = 6;
+}
+
+message CreateUpstreamRequest {
+  Upstream upstream = 1;
+}
+
+message CreateUpstreamResponse {
+  Upstream upstream = 1;
+}
+
+message UpdateUpstreamRequest {
+  string id = 1;
+  Upstream upstream = 2;
+}
+
+message UpdateUpstreamResponse {
+  Upstream upstream = 1;
+}
+
+message DeleteUpstreamRequest {
+  string id = 1;
+}
+
+message DeleteUpstreamResponse {
+  bool success = 1;
+}
+
+message GetUpstreamRequest {
+  string id = 1;
+}
+
+message GetUpstreamResponse {
+  Upstream upstream = 1;
+}
+
+message ListUpstreamsRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message ListUpstreamsResponse {
+  repeated Upstream upstreams = 1;
+  int32 total = 2;
+}
+
+// Health check messages
+message GetHealthRequest {
+}
+
+message GetHealthResponse {
+  string status = 1;
+  map<string, string> details = 2;
+}
+
+// Configuration messages
+message GetConfigRequest {
+}
+
+message GetConfigResponse {
+  map<string, string> config = 1;
+}
+
+message UpdateConfigRequest {
+  map<string, string> config = 1;
+}
+
+message UpdateConfigResponse {
+  bool success = 1;
+}
